@@ -1,4 +1,5 @@
 from collections import deque
+import math
 
 
 f = open("twenty.txt", "r")
@@ -42,19 +43,19 @@ for key in srctodest.keys():
         if module in conjtoparents.keys():
             conjtoparents[module][key] = False
 
-print(conjtoparents)
+print(conjtoparents['xm'])#xm is the conj module feeding into rx so we need it to have high signals from
+#all of its parents to send a low signal to rx
+parents = list(conjtoparents['xm'].keys())
 
 
-
-def pressbutton():
+def pressbutton(i):
     global broadcasterdest
     global srctodest
     global fliptostate
     global conjtoparents
+    global parents
 
 
-    lowpulses = 1#pushing the original button
-    highpulses = 0
     moduleq = deque()#queue of the order of the modules to process
     pulseq = deque()#queue of the signalse sent to the module, true if sent high pulse, false if sent low pulse
 
@@ -66,10 +67,6 @@ def pressbutton():
         module = moduleq.popleft()
         pulse = pulseq.popleft()
 
-        if (pulse):
-            highpulses += 1
-        else:
-            lowpulses += 1
         
 
         if module in fliptostate.keys():#module is a flipflop module
@@ -77,9 +74,12 @@ def pressbutton():
                 fliptostate[module] = not fliptostate[module] #flips off if on, on if off
                 #if it was off, fliptostate[module] is now True, and we want to send a high signal, so we just send fliptostate[module] as our signal
                 #same for if it was on
+                if module == parents[i] and fliptostate[module]:
+                    return True
                 for futuremod in srctodest[module]:
                     moduleq.append(futuremod)
                     pulseq.append(fliptostate[module])
+
 
                     #remembering signal for future conj modules
                     if (futuremod in conjtoparents.keys()):
@@ -90,6 +90,8 @@ def pressbutton():
                 allhigh = allhigh and conjtoparents[module][parent]
                 if (not allhigh):
                     break
+            if module == parents[i] and not allhigh:
+                return True
             #sends future pulse of (not allhigh)
             for futuremod in srctodest[module]:
                 moduleq.append(futuremod)
@@ -99,15 +101,20 @@ def pressbutton():
                 if (futuremod in conjtoparents.keys()):
                     conjtoparents[futuremod][module] = not allhigh
         
-    return (lowpulses, highpulses)
+    return False
 
 
+lcmnums = []
+cnum = 0
+while True:
+    cnum += 1
+    res = pressbutton(0)#changed this from 0-3 one by one because we have to reset the whole system to find
+    #how many presses it takes from the very beginning
+    if (res):
+        break
+lcmnums.append(cnum)
 
-lowpulses = 0
-highpulses = 0
-for i in range(1000):
-    l,h = pressbutton()
-    lowpulses += l
-    highpulses += h
+print(lcmnums)#[3877, 3917, 3889, 3803]
+print(math.lcm(3877,3917,3889,3803))
 
-print(lowpulses * highpulses)
+
